@@ -1,59 +1,133 @@
-# NotiGuard · 0.4.0 preview
+# NotiGuard
 
-Ứng dụng Android kiểm tra và duy trì một số cấu hình thông báo trên Xiaomi qua Shizuku. Phát triển cho Xiaomi 14 / HyperOS 3 / Android 16.
+Sửa tình trạng thông báo đến chậm trên điện thoại Xiaomi chạy **HyperOS bản nội địa Trung Quốc**: ngân hàng, Zalo, Messenger, Gmail… chỉ báo khi mở màn hình. Thành phần chính là **NotiGuard Keeper**, một app nhỏ chạy được khi Tùy chọn nhà phát triển đã tắt, nên app ngân hàng vẫn dùng bình thường.
 
-**Chưa sửa xong yêu cầu chạy độc lập khi tắt Developer Options.** Trên điện thoại đã thử, tắt gỡ lỗi làm mất kết nối Shizuku và GMS khỏi MILLET. Bản 0.4 bổ sung một luồng thử cấu hình qua màn hình hệ thống và kiểm tra độc lập; chưa có điện thoại để xác minh luồng mới. Không cam kết hết mất thông báo, giảm pin hoặc tương thích mọi ngân hàng.
+> Đã kiểm chứng trên Xiaomi 14, HyperOS OS3.0.307.0.WNCCNXM, Android 16 (16–19/10/2026). Máy hoặc bản HyperOS khác có thể chạy khác. Không cam kết mọi thông báo đều tức thì.
 
-[Tải APK đã ký và xem SHA256](https://github.com/tsunflowerr/NotiGuard/releases/tag/v0.4.0-preview). Repo riêng tư: cần đăng nhập tài khoản được cấp quyền. Cài APK trong mục Assets; các tệp Source code là mã nguồn, không phải bộ cài.
+## Vì sao thông báo bị chậm
 
-## Thay đổi trong 0.4
+- **HyperOS nội địa đóng băng Google Play services** khoảng 5 giây sau khi tắt màn hình. Đo trên máy thử: 269 lần trong khoảng 17 giờ. Kết nối push (FCM) đứt theo, nên app nào dùng push cũng nhận trễ.
+- Hệ thống chỉ tha cho app có trong danh sách miễn đóng băng `MILLET_NO_RESTRICT_APP`. PowerKeeper tự dựng lại danh sách này từ các app đặt "Không hạn chế". Google Play services không có lựa chọn đó, nên luôn bị bỏ ra mỗi khi bạn đổi chế độ pin của app nào đó, cài hoặc gỡ app.
+- Các nguyên nhân phụ trên máy thử: tắt "Tự động đồng bộ dữ liệu" (Gmail không tải thư mới), app bị buộc dừng (Android không giao push cho app này), dọn bộ nhớ sau khi khóa máy.
 
-- **Chỉ kiểm tra:** dừng tự sửa, hoàn tác phiên đang quản lý trước khi chuyển. Khi hoàn tác lỗi, giữ snapshot và trạng thái chờ, không báo đã chuyển thành công. Chế độ này không tự nối Shizuku hoặc lập job sửa nền.
-- **Mở cấu hình pin Google Play services:** thử mở màn hình thuộc ứng dụng hệ thống Xiaomi; nếu không có, mở thông tin GMS. Người dùng tự chọn Không hạn chế nếu ROM hiển thị. Không sửa cơ sở dữ liệu riêng của PowerKeeper hoặc gỡ bộ lọc ẩn của hệ thống. Mở được màn hình chưa chứng minh thay đổi thành công.
-- **Kiểm tra khi gỡ lỗi tắt:** phân biệt GMS thiếu, giá trị không đọc được, còn gỡ lỗi, hai mẫu cách nhau ít nhất 2 phút và mẫu sau khởi động lại. Không dùng cờ false để suy ra ngân hàng chấp nhận; không dùng hai mẫu để suy ra theo dõi liên tục.
-- **Observer trong tiến trình app:** khi app còn sống và đang bảo vệ, thay đổi MILLET/Aurogon yêu cầu shell kiểm tra qua API cố định, có gom sự kiện/backoff. Không giảm chu kỳ dự phòng chỉ vì nhận sự kiện ở app. Chưa kiểm chứng callback mới trên ROM này.
-- Giữ ba quyền như 0.3.1: boot completed, network state và Shizuku. Không thêm Internet, Trợ năng hoặc quyền đọc thông báo.
+Chi tiết và số đo: [docs/NOTIFICATION_CAUSES.md](docs/NOTIFICATION_CAUSES.md).
 
-## Dùng chế độ Shizuku
+## NotiGuard Keeper làm gì
 
-1. Cài [Shizuku chính thức](https://shizuku.rikka.app/download/), khởi động theo [hướng dẫn](https://shizuku.rikka.app/guide/setup/). Một số Xiaomi cần USB debugging (Security options) nếu thao tác bị từ chối.
-2. Cài APK, bấm **Kết nối / cấp quyền Shizuku**, tự cho phép trong Shizuku.
-3. Bấm **Đọc cấu hình**, kiểm tra nhóm app và giữ miễn Doze tắt lúc đầu.
-4. Bấm **Bật bảo vệ**, xem kết quả từng thao tác. Đọc lại setting chỉ chứng minh giá trị được lưu.
-5. Sau reboot cần khởi động lại Shizuku. Tắt Developer Options có thể làm mất dịch vụ; việc này đã xảy ra trên máy thử.
-6. Trước khi gỡ app hoặc xóa dữ liệu, **Tắt bảo vệ & hoàn tác**, đợi hết lỗi. Nếu mất Shizuku, nối lại để hoàn tác snapshot đang giữ.
+- Mỗi khi PowerKeeper xóa Google Play services khỏi danh sách miễn đóng băng, Keeper thêm lại trong khoảng 1 giây. Các mục khác giữ nguyên. Hệ thống tự báo khi danh sách đổi, nên Keeper không phải chạy ngầm liên tục.
+- **Kiểm tra sức khỏe**, chỉ một thông báo khi có thay đổi:
+  - App bạn đặt "Không hạn chế" bị buộc dừng, hoặc bị HyperOS tự đổi về mặc định.
+  - "Tự động đồng bộ dữ liệu" bị tắt.
+- Không hiện trong màn hình đa nhiệm, nên "Xóa tất cả" không dừng được nó.
+- **Không cần Shizuku**, không cần root, không mở khóa bootloader, không che giấu trạng thái gỡ lỗi.
 
-## Thử hướng không cần duy trì Shizuku
+Thiết kế và giới hạn: [docs/KEEPER.md](docs/KEEPER.md).
 
-Xem [quy trình kiểm thử ở máy công ty](docs/TEST_ON_DEVICE.md). Bước đặt cấu hình có thể không được ROM hỗ trợ; bản này không vượt quyền hệ thống để ép nó.
+## Yêu cầu
 
-Sau khi chuyển sang **Chỉ kiểm tra**, tự đặt GMS thành Không hạn chế nếu có. Tắt gỡ lỗi và kiểm tra ngay, sau 2 phút, sau thay đổi một cấu hình pin khác và sau reboot. Nếu GMS thiếu hoặc mục bị ẩn, ghi nhận thất bại. Trong chế độ này NotiGuard không tự thêm GMS để làm kết quả trông thành công.
+- Xiaomi / Redmi / POCO chạy **HyperOS 3 bản nội địa (Android 16)**. ROM quốc tế thường không cần Keeper.
+- **Một máy tính có ADB, dùng một lần khi cài** (và khi cập nhật). Từ Android 14, Keeper không cài được bằng cách mở file APK trên điện thoại, vì app được build cho Android cũ (lý do ở [docs/KEEPER.md](docs/KEEPER.md)).
+- File `NotiGuard-Keeper-<phiên bản>.apk` do người phát hành gửi, kèm mã SHA-256 để kiểm tra.
 
-## Phạm vi sửa hiện tại
+## Cài đặt (một lần)
 
-- Thêm riêng GMS vào `Settings.System.MILLET_NO_RESTRICT_APP` ở user 0, giữ các mục khác. PowerKeeper có thể ghi đè danh sách từ bảng riêng; Shizuku dùng watchdog 120/300 giây để sửa khi còn quyền chạy. Không giữ CPU thức, không báo thức đánh thức máy. Ngủ sâu có thể trì hoãn kiểm tra.
-- Chỉ thêm overlay FCM có marker riêng vào `Settings.Global.aurogon_enable` khi setting đã tồn tại; ROM đang thử không có setting này nên bỏ qua.
-- Observer trong shell đã bị từ chối với lỗi `Failed to find PID` trên máy thử. Chỉ dùng watchdog 900 giây nếu observer shell thực sự nhận sự kiện. Callback mới từ app không thay thế watchdog.
-- Miễn Doze và hai AppOp chạy nền cho GMS cùng nhóm đã chọn là tùy chọn, mặc định tắt. Có thể tăng hao pin. Không tắt toàn bộ Doze, PowerKeeper hoặc Greezer.
-- Snapshot được lưu đồng bộ trước khi sửa; hoàn tác riêng phần được quản lý. Giữ snapshot nếu hoàn tác lỗi. Không có giao dịch nguyên tử với hệ thống; xem [SECURITY.md](SECURITY.md).
-- Chẩn đoán chỉ đọc mạng, DND, cờ buộc dừng, quyền thông báo và miễn pin; không đọc tin nhắn, OTP, tài khoản hoặc dữ liệu ngân hàng. Không thể sửa priority/TTL/token/máy chủ của app khác.
+1. **Kiểm tra file.** Trên máy tính chạy `certutil -hashfile NotiGuard-Keeper-1.0.3.apk SHA256` (Windows) hoặc `sha256sum` (macOS/Linux). Kết quả phải trùng mã SHA-256 người phát hành gửi; không trùng thì đừng cài.
+2. **Trên điện thoại:**
+   - Cài đặt → Giới thiệu điện thoại → chạm 7 lần vào "Phiên bản HyperOS" để bật Tùy chọn nhà phát triển.
+   - Trong Tùy chọn nhà phát triển, bật **USB debugging** và **Install via USB**. ROM nội địa có thể yêu cầu đăng nhập tài khoản Mi và lắp SIM cho mục này.
+3. **Trên máy tính:** tải [Android SDK Platform-Tools](https://developer.android.com/tools/releases/platform-tools) và giải nén. Cắm điện thoại, bấm **Cho phép** ở hộp "Cho phép USB debugging?" trên điện thoại, rồi chạy trong thư mục platform-tools:
+   ```
+   adb install --bypass-low-target-sdk-block NotiGuard-Keeper-1.0.3.apk
+   ```
+   Hộp "Install via USB" hiện trên điện thoại: **tự bấm Install trong khoảng 8 giây**. Hết giờ, hệ thống tự từ chối; chạy lại lệnh là được.
+4. **Mở NotiGuard Keeper.** Màn hình xem lại quyền hiện ra, mọi công tắc đều tắt sẵn: **chỉ bật "Sửa cài đặt hệ thống"**, để nguyên các mục khác, bấm OK. Nếu được hỏi quyền thông báo, chọn **Cho phép**.
+5. **Làm ngay sau bước 4:** Cài đặt → Ứng dụng → NotiGuard Keeper:
+   - Bật **Tự khởi động**.
+   - Vào **Power**, chọn **Không hạn chế**.
 
-Chỉ hỗ trợ hồ sơ chủ máy. Danh sách theo package có thể tác động hồ sơ khác do cách Xiaomi/Android thực thi; chưa kiểm chứng app nhân bản hoặc hồ sơ công việc.
+   Để Keeper ở nền lâu trước bước này thì HyperOS sẽ đóng băng nó.
+6. **Mở lại Keeper.** Phải thấy "GMS trong MILLET: có", "Quyền sửa cài đặt hệ thống: có" và "Theo dõi thay đổi: đang chờ".
+7. **Tắt Tùy chọn nhà phát triển** (công tắc trên cùng). USB debugging tắt theo; rút cáp.
 
-## Build và xác minh
+## Thiết lập để nhận thông báo đầy đủ
 
-JDK 17, Android SDK 36, build-tools 36.0.0. Tạo `local.properties` với `sdk.dir=...`, chạy:
+Làm một lần qua giao diện Cài đặt; không cần máy tính.
 
-```text
-gradlew testDebugUnitTest lintDebug assembleRelease
+- **Mỗi app cần thông báo tức thì** (ngân hàng, ví, Zalo, Messenger, Gmail…), vào Cài đặt → Ứng dụng → [app]:
+  - Bật **Tự khởi động**.
+  - **Power → Không hạn chế**.
+- **Cài đặt → Tài khoản & đồng bộ → bật "Tự động đồng bộ dữ liệu".** Gmail cần mục này để báo thư mới.
+- **Cài đặt → Pin:** tìm mục "Xóa bộ nhớ đệm khi khóa máy" (Clear cache when device is locked), chọn **Không bao giờ**. Trên máy thử mục này nằm trong trang tối ưu pin, mặc định 10 phút.
+- **Khóa các app quan trọng trong đa nhiệm:** mở đa nhiệm, nhấn giữ thẻ app, chọn biểu tượng ổ khóa. Trên máy thử, "Xóa tất cả" buộc dừng mọi app chưa khóa, kể cả app "Không hạn chế".
+- **Mở mỗi app ngân hàng một lần** sau khi tắt gỡ lỗi, để chắc chắn app không còn ở trạng thái bị buộc dừng.
+
+"Không hạn chế" cho app nặng (Facebook, TikTok…) làm hao pin nền. Chỉ bật cho app thật sự cần thông báo tức thì.
+
+## Sử dụng hằng ngày
+
+Không cần làm gì. Mở Keeper khi muốn kiểm tra:
+
+| Dòng | Ý nghĩa |
+|---|---|
+| GMS trong MILLET: có | Google Play services đang được miễn đóng băng |
+| Theo dõi thay đổi: đang chờ | Keeper sẵn sàng sửa khi danh sách bị dựng lại |
+| Đã thêm lại: N lần | Số lần Keeper đã tự sửa |
+| Cảnh báo | Việc cần làm, kèm nút mở đúng app hoặc đúng màn hình |
+| Nhật ký gần đây | 20 sự kiện gần nhất |
+
+Trên mỗi cảnh báo về một app:
+- **"Bỏ qua app này"** dùng cho app không cần thông báo.
+- **"Theo dõi lại tất cả"** hoàn tác các lần bỏ qua.
+
+Kiểm tra kết nối push mà không cần máy tính: bấm `*#*#426#*#*` trong ứng dụng Điện thoại (FCM Diagnostics).
+
+## Không nên làm
+
+- **Không gỡ cài đặt và không "Xóa dữ liệu" Keeper.** Android sẽ xóa cả danh sách miễn đóng băng, mọi app mất miễn trừ. Nếu buộc phải gỡ: gỡ xong, vào một app bất kỳ → Power, chọn chế độ khác rồi chọn lại như cũ, để PowerKeeper dựng lại danh sách.
+- **Không buộc dừng Keeper, không tắt quyền "Sửa cài đặt hệ thống"** của nó. Lỡ buộc dừng thì mở Keeper một lần.
+- **Sau mỗi lần cập nhật HyperOS**, mở Keeper xem có báo "Bị từ chối ghi" không.
+
+## Cập nhật và gỡ bỏ
+
+- **Cập nhật:** bật lại USB debugging và Install via USB, rồi chạy `adb install -r --bypass-low-target-sdk-block NotiGuard-Keeper-<bản mới>.apk`. Quyền và cài đặt pin được giữ nguyên. Bản mới phải được ký cùng khóa với bản đang cài.
+- **Gỡ bỏ:** xem mục "Không nên làm" ở trên, và [docs/KEEPER.md](docs/KEEPER.md#gỡ-bỏ).
+
+## Pin, quyền riêng tư và bảo mật
+
+- **Pin:** Keeper dùng khoảng 0,2 mAh trong 9 giờ trên máy thử. Phần tốn thật là Google Play services không còn bị đóng băng: khoảng 28 mAh trong 9 giờ (dưới 1% pin), tương đương ROM quốc tế.
+- **Quyền:** chỉ có ba quyền: "Sửa cài đặt hệ thống", chạy khi khởi động máy, đọc công tắc đồng bộ.
+- **Không có quyền Internet**, nên không gửi được dữ liệu ra ngoài.
+- **Không đọc** thông báo, tin nhắn, tài khoản hay dữ liệu ngân hàng. Không dùng Trợ năng.
+- **Chỉ ghi một setting** (`MILLET_NO_RESTRICT_APP`). Nhật ký nằm trong bộ nhớ riêng của app, đã tắt sao lưu.
+- **Keeper nhắm Android 5.1 (targetSdk 22)** để được phép ghi setting của hãng. Vì thế Android cảnh báo "ứng dụng dành cho phiên bản cũ", và Play Protect có thể cảnh báo.
+- **Chỉ cài APK từ người bạn tin.** Quyền "Sửa cài đặt hệ thống" sẽ nguy hiểm nếu APK bị thay bằng bản độc hại; luôn kiểm tra SHA-256.
+- Chưa có kiểm toán bảo mật độc lập. Xem [SECURITY.md](SECURITY.md).
+
+## Build từ mã nguồn
+
+Cần JDK 17 trong `%LOCALAPPDATA%\NotiGuardBuild\jdk-*` và Android SDK (platform 36, build-tools 36.0.0) trong `%LOCALAPPDATA%\Android\Sdk`. Chạy:
+
+```
+powershell -File scripts\build-keeper.ps1
 ```
 
-Lệnh trên tạo APK release **chưa ký**. `scripts/build.ps1` build trong thư mục ASCII mới, kiểm thử và ký bằng khóa cục bộ tại `%LOCALAPPDATA%/NotiGuardBuild/keys`. Đặt JDK 17 tại `%LOCALAPPDATA%/NotiGuardBuild/jdk-*`. Khóa và mật khẩu DPAPI không đưa lên GitHub; giữ nguyên khóa để cập nhật app đã cài. APK debug dùng chữ ký khác.
+Script build trong thư mục tạm mới, chạy unit test, lint, assembleRelease, ký bằng khóa riêng của Keeper (`%LOCALAPPDATA%\NotiGuardBuild\keys\keeper.jks`, mật khẩu mã hóa theo tài khoản Windows) và in SHA-256 của `dist\NotiGuard-Keeper-<phiên bản>.apk`.
 
-Checksum Gradle và dependency được khóa trong repo. Không dùng `-RecordDependencyChecksums` để tự chấp nhận dependency thay đổi chưa xem xét. Checksum không thay thế kiểm toán mã. [Báo cáo bản 0.4](docs/releases/0.4.0.md) phân biệt kiểm tra tự động với thử trên thiết bị.
+- **Giữ khóa ký** để phát hành bản cập nhật cài đè được.
+- Khóa không bao giờ được đưa lên git.
+- Phiên bản Gradle và mọi thư viện đều được khóa checksum trong repo.
 
-## Nguồn và giấy phép
+## Ứng dụng NotiGuard (Shizuku, cũ)
 
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) ghi nguồn, commit và giấy phép. Hai bộ xử lý cấu hình được chuyển từ dingwen07/hyperos-fcm-fix; các phần UI, quản trị, Binder, snapshot và kiểm thử được viết cho NotiGuard. Không có bằng chứng hiệu quả hoặc pin vượt upstream. GPL-3.0-or-later cho phần NotiGuard, giữ điều kiện GPL-3.0 của phần tham khảo.
+Module `app` là ứng dụng NotiGuard 0.4 dùng Shizuku. Nó chỉ hoạt động khi USB/Wireless debugging còn bật, nên không phù hợp nếu bạn dùng app ngân hàng. Tài liệu cũ: [docs/NOTIGUARD_SHIZUKU.md](docs/NOTIGUARD_SHIZUKU.md).
 
-[Chi tiết thay đổi và các phép thử thất bại](docs/PROVENANCE_AND_CHANGES.md) · [Các nhóm nguyên nhân mất thông báo](docs/NOTIFICATION_CAUSES.md) · [Bảo mật](SECURITY.md)
+## Tài liệu
+
+- [docs/KEEPER.md](docs/KEEPER.md): thiết kế, đánh đổi, số đo của Keeper.
+- [docs/NOTIFICATION_CAUSES.md](docs/NOTIFICATION_CAUSES.md): các nguyên nhân thông báo chậm và kết quả đo trên Xiaomi 14.
+- [docs/PROVENANCE_AND_CHANGES.md](docs/PROVENANCE_AND_CHANGES.md): nguồn gốc mã và lịch sử thay đổi.
+- [SECURITY.md](SECURITY.md): phạm vi bảo mật.
+
+## Giấy phép
+
+GPL-3.0-or-later. Ghi nhận nguồn tham khảo (dingwen07/hyperos-fcm-fix) trong [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Khi phát hành APK cho người khác, cung cấp kèm mã nguồn theo điều khoản GPL.

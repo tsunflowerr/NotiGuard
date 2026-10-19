@@ -33,7 +33,19 @@ Mục tiêu là phân biệt cấu hình nhận push, truyền qua mạng, xử 
 - `dumpsys greezer` báo `mGmsLimitEnabled: true` và có lịch sử đóng băng GMS. Đây là cờ/counter tích lũy, chưa chứng minh GMS đang bị đóng băng đúng lúc đọc hay là nguyên nhân duy nhất.
 - Aurogon setting vắng mặt: bản hiện tại bỏ qua, chưa chứng minh cơ chế đó không tồn tại trong framework.
 - Thử ContentService observer trong shell UserService bị từ chối `Failed to find PID`; 0.2/0.3 quay về polling. Chưa có cải tiến theo sự kiện được xác minh trên máy này.
-- Thử cấp WRITE_SECURE_SETTINGS rồi ghi lại cùng giá trị MILLET bằng UID app bị từ chối `You cannot keep your settings in the secure settings`. Đã thu hồi quyền; bản cuối không khai báo quyền đó. Chưa có chế độ không Shizuku tự duy trì đã chứng minh hoạt động.
+- Thử cấp WRITE_SECURE_SETTINGS rồi ghi lại cùng giá trị MILLET bằng UID app bị từ chối `You cannot keep your settings in the secure settings`. Đã thu hồi quyền; bản cuối không khai báo quyền đó. Nguyên nhân là targetSdk 36 (xem dưới).
+
+### Đo bằng ADB chỉ đọc, 16/10/2026 (OS3.0.307.0.WNCCNXM.C11, PowerKeeper 4.2.00, GMS 26.39.33)
+
+| Nguyên nhân | Bằng chứng | Đã sửa |
+|---|---|---|
+| Greezer đóng băng GMS | 269 lần trong khoảng 17 giờ: 82 `screen off` (khoảng 5 giây sau khi tắt màn hình), 176 `from system` ngay sau mỗi lần rã ngắn; `IM mGmsLimitEnabled : true`; GMS đã ở danh sách miễn Doze `system` và `system-excidle` | GMS trong MILLET, giữ bằng [NotiGuard Keeper](KEEPER.md); thử 60 giây tắt màn hình không còn đóng băng GMS, kết nối FCM giữ liên tục |
+| Tắt "Tự động đồng bộ dữ liệu" | `dumpsys content`: `Auto sync: u0=false`; GMS vẫn giao FCM cho Gmail (`Successful broadcast to com.google.android.gm`) | Bật lại. Thư mới cần đồng bộ; Google Chat không cần, nên Chat vẫn báo |
+| App bị buộc dừng | BIDV, VCB, Telegram `stopped=true`; log GMS `Failed to broadcast to stopped app`. "Xóa bộ nhớ đệm khi khóa máy" đặt 10 phút | Đặt "Không bao giờ"; mở app một lần để gỡ trạng thái dừng |
+| Tự khởi động bị chặn | MIUIOP 10008/10053 `ignore` cho BIDV, VCB, Facebook, Instagram, Telegram; log GMS `No response to broadcast from com.facebook.katana`. Công tắc Tự khởi động của SecurityCenter ghi MIUIOP 10053 | Bật bằng công tắc chính thức |
+| Greezer từ chối push tới app đang đóng băng | `Greezer Denial: sending Intent { act=com.google.android.c2dm.intent.RECEIVE … pkg=org.telegram.messenger`, GMS nhận `result=CANCELLED` | "Không hạn chế" cho app nhắn tin, mạng xã hội và ngân hàng; PowerKeeper tự đưa vào MILLET và danh sách miễn Doze `user` |
+
+Màn hình chi tiết pin của GMS chỉ có "Battery details" và "Included packages", không có bộ chọn. PowerKeeper 4.2.00 xét biểu tượng launcher của trưởng nhóm UID (`PreSetGroup`), với GMS là `com.google.android.gsf`; danh sách ẩn lưu trong `SimpleSettings.Misc` riêng của PowerKeeper, không phải `Settings.Secure` (đọc ra `null`). `miui.intent.action.HIDDEN_APPS_CONFIG_ACTIVITY` không tồn tại trên bản này. Không có cách chính thức để PowerKeeper lưu GMS là "Không hạn chế".
 
 ## Developer Options và ngân hàng
 
@@ -41,6 +53,6 @@ Không có bằng chứng về một cấu hình Developer Options bật mà m�
 
 **Đã thử và thất bại trên máy này:** người dùng tắt Developer Options, USB debugging và wireless debugging. Báo cáo NotiGuard sau thao tác cho biết cả ba cờ đều false, GMS không có trong MILLET và RPC Shizuku không kết nối. Bản hiện tại không tiếp tục duy trì cơ chế bảo vệ trong điều kiện đó. Kết quả này do người dùng cung cấp từ giao diện app vì ADB đã bị ngắt.
 
-Chưa xác định thời điểm hoặc thành phần nào bỏ mục GMS, nên không kết luận thao tác tắt Developer Options trực tiếp xóa khóa. Chưa có kết quả riêng xác nhận các app ngân hàng sau thao tác.
+Tắt Developer Options không xóa khóa: AOSP chỉ đặt lại các setting thuộc Developer Options, tắt ADB chỉ dừng adbd. Mục GMS mất vì Shizuku chết nên không ai thêm lại khi PowerKeeper dựng lại MILLET (đổi chế độ pin của app bất kỳ, cài hoặc gỡ app; đo được trên máy này khi cài Keeper và khi đổi chế độ pin).
 
-[Hướng dẫn Shizuku](https://shizuku.rikka.app/guide/setup/) khuyên giữ USB debugging và Developer Options bật. Không tiếp tục đề xuất quy trình bật Shizuku rồi tắt Developer Options như một phương án dùng ổn định trên máy này. Cấp thêm quyền thông báo, Trợ năng hoặc tự khởi động không thay thế quyền shell đã mất. Yêu cầu vừa tự duy trì sửa cấu hình này, vừa tắt Developer Options, vừa không có quyền hệ thống bền vững khác hiện chưa được đáp ứng.
+[Hướng dẫn Shizuku](https://shizuku.rikka.app/guide/setup/) khuyên giữ USB debugging và Developer Options bật, nên Shizuku không phải đường dùng lâu dài khi ngân hàng chặn gỡ lỗi. Đường đã kiểm chứng trên máy này là [NotiGuard Keeper](KEEPER.md): app targetSdk 22 có `WRITE_SETTINGS`, cài một lần qua ADB, sau đó tự thêm lại GMS trong khoảng một giây sau mỗi lần PowerKeeper dựng lại, khi gỡ lỗi đã tắt. Không che giấu cờ gỡ lỗi; ngân hàng thấy đúng trạng thái máy. Chưa có số đo qua đêm hay qua khởi động lại cho Keeper.

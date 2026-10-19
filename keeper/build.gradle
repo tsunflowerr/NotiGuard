@@ -1,0 +1,31 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'vn.notiguard.keeper'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'vn.notiguard.keeper'
+        // Deliberately legacy: SettingsProvider only lets apps targeting <= 22 write vendor
+        // Settings.System keys such as MILLET_NO_RESTRICT_APP (see docs/KEEPER.md).
+        minSdk 22
+        targetSdk 22
+        versionCode 4
+        versionName '1.0.3'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    buildTypes {
+        release { minifyEnabled false }
+    }
+    lint {
+        abortOnError true
+        // The old target is the whole point of this module; it is never published on Play.
+        disable 'ExpiredTargetSdkVersion', 'OldTargetApi'
+    }
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+}

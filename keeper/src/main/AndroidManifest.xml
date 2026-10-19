@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Granted to targetSdk <= 22 apps at install (pre23); user can revoke in Modify system settings. -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Only to warn when the device-wide Auto-sync switch is off (Gmail then never fetches new mail). -->
+    <uses-permission android:name="android.permission.READ_SYNC_SETTINGS" />
+    <application android:label="NotiGuard Keeper" android:icon="@drawable/ic_keeper"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar"
+        android:allowBackup="false" android:fullBackupContent="false" android:supportsRtl="true">
+        <!-- Kept out of Recents so "Clear all" cannot force-stop Keeper, which would cancel its jobs. -->
+        <activity android:name=".MainActivity" android:exported="true" android:excludeFromRecents="true">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity>
+        <service android:name=".RepairJob" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="true" />
+        <receiver android:name=".BootReceiver" android:exported="false">
+            <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /><action android:name="android.intent.action.MY_PACKAGE_REPLACED" /></intent-filter>
+        </receiver>
+    </application>
+</manifest>
